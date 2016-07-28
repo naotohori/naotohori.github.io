@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Protein Collapse</title>
+    <style></style>
+</head>
+
+<body>
+	<script src="d3.min.js" type="text/javascript" charset="utf-8"></script>
+	<h1>Protein collapse graphs</h1>
+	Every point on the graph has a popup floating title, where you can find out it's name, PDB, length, secondary structure content and number of domains. 
+	Zoomable with mouse wheel (or other zoom gesture) at the end of plot sequence.
+	<svg>
+		<style>
+		.axis path,
+		.axis line {
+		  fill: none;
+		  stroke: #000;
+		  shape-rendering: crispEdges;
+		}
+		.axis text {
+		  font: 10px sans-serif;
+		}
+		</style>
+	</svg>
+</body>
+<script type="text/javascript">
+	var margin = {top: 20, right: 100, bottom: 50, left: 80},
+		width = 1000,
+		height = 500;
+		
+	var ttime=1000;
+		
+	d3.csv("worigdataframe6.3.csv", function(data) {
+	
+	
+		var svg=d3.selectAll('svg');
+		var chart1=svg.attr("width", width + margin.left + margin.right)
+			.attr("height", height + margin.top + margin.bottom)
+			.append('g')
+			.attr("transform", "translate(" + margin.left + "," + (margin.top)+ ")");
+			
+		chart1.append("defs").append("svg:clipPath")
+	        .attr("id", "clip")
+	        .append("svg:rect")
+	        .attr("id", "clip-rect")
+	        .attr("x", "0")
+	        .attr("y", "0")
+	        .attr("width", width)
+	        .attr("height", height);
+
+		var chart=chart1.append("g").attr("clip-path", "url(#clip)");
+			
+		var xN=d3.scale.linear().domain([0,550]).range([0,width]);
+		var rN=d3.scale.sqrt().domain([0,550]).range([0,10]);
+		var xB=d3.scale.linear().domain([0,1]).range([0,width]);
+		var yk=d3.scale.linear().domain([0,10]).range([height,0]);
+		var cB=d3.scale.linear().domain([0,1]).range(['red','blue'])
+		var cA=d3.scale.linear().domain([0,1]).range(['red','blue'])
+		var cAB = function(a,b) {return "rgb("+Math.floor(a*255)+",0,"+Math.floor(b*255)+")"}
+		
+		
+
+		var xlabel=chart1.append("text").attr("x",width/2.).attr("y",height+40).text("N")
+		var ylabel=chart1.append("text").attr("transform","translate(-30,"+height/2.+")rotate(-90)").text("k, kT")
+		
+		var dots=chart.selectAll('circle').data(data).enter().append('circle')
+			.attr("cx",function(d) {return xN(+d.N)})
+			//.attr("cx",function(d) {return xB(+d.N_beta/d.N)})
+			.attr("cy",function(d) {return yk(+d.k)})
+			.attr("r","2px")
+			//.attr("r",function(d) {return rN(+d.N)})
+			.attr("opacity",.4);
+		
+		dots.append("title").text(function(d) { 
+				return "Protein: "+d.Compound
+						+"\nPDB: "+d.PDB
+						+"\nChain: "+d.Chain
+				+"\nMethod: "+d.Method
+				+"\n"+"k: "+d3.format(".2f")(d.k)
+				+"\n"+"N: "+d.N+"\n"
+				+"Native contacts: "+Math.floor(d.N_nc)
+				+"\nDomains: "+((+d.Domains<1000)?(Math.floor(d.Domains)):"N/A")
+				+"\nα-content: "+d3.format("%d\%")(d.N_hlx/d.N)
+				+"\nβ-content: "+d3.format("%d\%")(d.N_beta/d.N);
+		});
+		
+		var xAxis = d3.svg.axis().scale(xN).orient("bottom");
+		var yAxis = d3.svg.axis().scale(yk).orient("left");
+		chart1.append("g").attr("class", "x axis").attr("transform", "translate(0," + height + ")").call(xAxis);
+		chart1.append("g").attr("class", "y axis").call(yAxis);
+		//svg.call(d3.behavior.zoom().x(xN).y(yk).on("zoom", refresh));
+		
+		var radleg;
+		
+		d3.select("body").append("br")
+		var nextbutton=d3.select("body").append("button").text("See secondary structure").on("click",SecStruct);
+			
+		function SecStruct() {
+			dots.transition().duration(ttime).ease("quad")
+			.attr("fill", function(d) {return cAB(d.N_hlx/d.N,d.N_beta/d.N)})
+			.attr("r","4px")
+			var legbox=chart1.append("g").attr("transform","translate("+width+","+height/2.+")");
+			var step=.05,size=100.
+			for (var i=0; i<1; i+=step)
+				for (var j=0; j<1; j+=step)
+					legbox.append("rect").attr("x",i*size).attr("y",j*size).attr("width",size*step).attr("height",size*step).attr("fill",cAB(i,j)).attr("opacity",.8);
+			legbox.append("text").text("0% α,β").attr("fill","white").attr("y","1em").style("font-size","12px").attr("x",3)
+			legbox.append("text").text("100% α").attr("fill","white").attr("y","1em").attr("x",.6*size).style("font-size","12px")
+			legbox.append("text").text("100% β").attr("fill","white").attr("y",size-3.).style("font-size","12px").attr("x",3)
+			nextbutton.text("Next: β-content").on("click", bcontent);
+			
+		}
+		
+		function bcontent() {
+			xlabel.text("β-content")
+			xAxis.scale(xB).tickFormat(d3.format("%"));
+			d3.select(".x").call(xAxis)
+			radleg=chart1.append("text").attr("x", .8*width).attr("y",height-20).text("Circle size reflects N");
+			nextbutton.text("Next: α-content").on("click", acontent);
+			
+			dots.transition().duration(ttime)
+				//.attr("transform","")
+				.attr("cx",function(d) {return xB(+d.N_beta/d.N)})
+				.attr("r",function(d) {return rN(+d.N)})
+			
+			//chart1.call(d3.behavior.zoom().x(xB).y(yk).on("zoom", refresh));
+			
+		};
+		
+		function acontent() {
+			xlabel.text("α-content")
+			dots.transition().duration(ttime).ease("quad")
+				.attr("cx",function(d) {return xB(+d.N_hlx/d.N)})
+			nextbutton.text("Next: Back to N").on("click", BackToN);
+			
+		};
+		
+		function BackToN() {
+			radleg.text("")
+			xlabel.text("N")
+			xAxis.scale(xN).tickFormat(d3.format("d"));
+			d3.select(".x").call(xAxis)
+			dots.transition().duration(ttime).ease("quad")
+				.attr("cx",function(d) {return xN(+d.N)})
+				.attr("r","4px")
+			chart1.call(d3.behavior.zoom().x(xN).y(yk).on("zoom", refresh));
+			//chart1.call(d3.behavior.zoom().on("zoom", refresh1));
+			nextbutton.text("Next: See domains").on("click", seedomains)
+			
+		};
+		
+		function seedomains() {
+			radleg.text("Circle size reflects number of domains")
+			dots.transition().duration(ttime).ease("quad")
+				.attr("r",function(d) { return (+d.Domains<1000)?5*(+d.Domains):2+"px";})
+			nextbutton.remove();
+			
+		};
+		
+		function refresh() {
+			chart1.select(".x.axis").call(xAxis);
+			chart1.select(".y.axis").call(yAxis);
+			dots//.attr("r", function(d) {return ((+d.Domains<1000)?5*(+d.Domains):2)/d3.event.scale+"px"})
+				.attr("transform","translate("+d3.event.translate+")"+"scale("+d3.event.scale+")");
+		};
+		
+		function refresh1() {
+			chart1.select(".x.axis").call(xAxis);
+			chart1.select(".y.axis").call(yAxis);
+			dots.attr("transform","translate("+d3.event.translate+")"+"scale("+d3.event.scale+")");
+		};
+	});
+</script>
+</html>
