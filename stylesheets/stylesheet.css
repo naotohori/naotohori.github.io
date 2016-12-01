@@ -52,9 +52,9 @@ body {
   box-sizing: border-box;
   color:#373737;
   background: #212121;
-  font-size: 16px;
+  font-size: 18px;
   font-family: 'Myriad Pro', Calibri, Helvetica, Arial, sans-serif;
-  line-height: 1.5;
+  line-height: 1.2;
   -webkit-font-smoothing: antialiased;
 }
 
@@ -197,7 +197,10 @@ blockquote {
 
 
 ul, ol, dl {
-  margin-bottom: 15px
+  margin-top: 0px;
+  margin-left: 30px;
+  line-height: 120%;
+  font-size: 18px;
 }
 
 ul {
@@ -210,6 +213,11 @@ ol {
   list-style-position: inside;
   list-style: decimal;
   padding-left: 20px;
+}
+
+li {
+  margin-bottom: 0.5em;
+  /*margin-left: 1em;*/
 }
 
 dl dt {
@@ -266,7 +274,8 @@ Full-Width Styles
 
 .inner {
   position: relative;
-  max-width: 640px;
+  /*max-width: 640px;*/
+  max-width: 800px;
   padding: 20px 10px;
   margin: 0 auto;
 }
